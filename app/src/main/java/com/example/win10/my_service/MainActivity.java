@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.graphics.Bitmap;
 import android.net.Uri;
+import android.os.Handler;
 import android.os.IBinder;
 import android.os.Parcel;
 import android.provider.MediaStore;
@@ -32,6 +33,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
 
 
     private LinearLayout rootView;
+    Handler handler=new Handler();
     ImageView imageView;
     public static final int CAMERA_REQUEST=9999;
     @Override
@@ -53,22 +55,29 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
 
         setContentView(R.layout.activity_main);
         imageView=(ImageView)findViewById(R.id.imageView);
-        rootView = findViewById(R.id.rootview);
+        rootView = (LinearLayout) findViewById(R.id.rootview);
         startButton = new Button(getApplicationContext());
-        startButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Animation a = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.animationset);
-                a.reset();
-                dateButton.clearAnimation();
-                dateButton.startAnimation(a);
 
-            }
-        });
+                /*Animation a = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.animationset);
+                a.reset();
+                imageView.clearAnimation();
+                 imageView.startAnimation(a);
+                handler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        finish();
+                    }
+                },2300);
+
+*/
+
+
+
+        finish();
         startService(new Intent(getApplicationContext(), Service1.class));
 
         startButton.setText("Start Service");
-        rootView.addView(startButton);
+        //rootView.addView(startButton);
         endButton = new Button(getApplicationContext());
         endButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -77,12 +86,12 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
             }
         });
         endButton.setText("End Service");
-        rootView.addView(endButton);
+        //rootView.addView(endButton);
         dateButton=new Button(getApplicationContext());
-        rootView.addView(dateButton);
+        //rootView.addView(dateButton);
         dateButton.setText("Date");
         timeButton=new Button(getApplicationContext());
-        rootView.addView(timeButton);
+        //rootView.addView(timeButton);
         timeButton.setText("Time");
 
         timeButton.setOnClickListener(new View.OnClickListener() {

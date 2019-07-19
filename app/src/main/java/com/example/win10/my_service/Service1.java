@@ -2,14 +2,20 @@ package com.example.win10.my_service;
 
 import android.app.Notification;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.GradientDrawable;
 import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.BatteryManager;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
 import android.speech.RecognitionListener;
@@ -17,6 +23,7 @@ import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
 import android.speech.tts.TextToSpeech;
 import android.support.annotation.Nullable;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -38,6 +45,7 @@ import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Date;
@@ -48,6 +56,8 @@ import java.util.Locale;
 
 import javax.net.ssl.HttpsURLConnection;
 
+import static android.content.ContentValues.TAG;
+
 public class Service1 extends Service implements TextToSpeech.OnInitListener
 {
     private SpeechRecognizer speechRecognizer;
@@ -56,6 +66,7 @@ public class Service1 extends Service implements TextToSpeech.OnInitListener
     private boolean canContinue = true;
     private Handler handler;
     private TextToSpeech tts;
+    private LinearLayout floatingButtonContainer;
     private FloatingButton floatingButton;
     private Button dateButton, timeButton;
     private WindowManager windowManager;
@@ -69,7 +80,6 @@ public class Service1 extends Service implements TextToSpeech.OnInitListener
     private Button b[]=new Button[4];
     private Button speechButton, oxforddictionary;
     private  String word="A" ;
-
     private int previoushour;
     Calendar c = Calendar.getInstance();
 
@@ -136,7 +146,9 @@ public class Service1 extends Service implements TextToSpeech.OnInitListener
                 if(mpspeech.contains("hello"))
                 {
                     tts.speak("hi sir? Whats up",TextToSpeech.QUEUE_ADD,null,null);
+                    speechRecognizer.startListening(new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH));
                 }
+
                 else if(mpspeech.contains("introduction") || mpspeech.contains("developer"))
                 {
                     tts.speak("Sir, I am developed by Ashwani in Android Studio version 3.1.3 for api level 25.He is a very good person.He helps everyone",TextToSpeech.QUEUE_ADD,null,null);
@@ -179,10 +191,121 @@ public class Service1 extends Service implements TextToSpeech.OnInitListener
                     word=mpspeech.substring(mpspeech.lastIndexOf(" "));
                     oxforddictionary.performClick();
                 }
+                else if(mpspeech.contains("play")&& mpspeech.contains("music"))
+                {
+                    String path="";
+                    try
+                    {
+                        MediaPlayer mp;//= new MediaPlayer();
+                        /*path = Environment.getExternalStorageDirectory().getPath();
+
+                        mp.setDataSource("file:/// "+path + "/song.mp3");
+                       //  mp.setDataSource("/External Storage/song.mp3");
+                        mp.prepare();
+                        mp.start();*/
+                        mp=MediaPlayer.create(getApplicationContext(),Uri.parse(Environment.getExternalStorageDirectory().getPath()+"/song.mp3"));
+                        mp.setLooping(true);
+                        mp.start();
+                    }
+                    catch(Exception e)
+                    {
+                        speakAndWait(e.toString() + path);
+                    }
+
+                }
+                else if(mpspeech.contains("whatsApp") || mpspeech.contains("WhatsApp"))
+                {
+                    int fi=mpspeech.indexOf("whatsApp");
+                    if(fi==-1)
+                        fi=mpspeech.indexOf("WhatsApp");
+                     String text="hello";
+                    if(!(mpspeech.substring(fi)).equals(""))
+                        text=mpspeech.substring(fi);
+                    PackageManager pm=getPackageManager();
+                    try {
+
+                        Intent waIntent = new Intent(Intent.ACTION_SEND);
+                        waIntent.setType("text/plain");
+
+
+                        PackageInfo info=pm.getPackageInfo("com.whatsapp", PackageManager.GET_META_DATA);
+                        //Check if package exists or not. If not then code
+                        //in catch block will be called
+                        waIntent.setPackage("com.whatsapp");
+
+                        waIntent.putExtra(Intent.EXTRA_TEXT, text);
+                        startActivity(Intent.createChooser(waIntent, "Share with"));
+
+                    } catch (PackageManager.NameNotFoundException e) {
+                        Toast.makeText(getApplicationContext(), "WhatsApp not Installed", Toast.LENGTH_SHORT)
+                                .show();
+                    }
+                }
+                else if (mpspeech.contains("google") || mpspeech.contains("Google") )
+                {
+                    int fi=mpspeech.indexOf("google");
+                    if(fi==-1)
+                        fi=mpspeech.indexOf("Google");
+
+                    final String qry=mpspeech.substring(fi);
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+
+                            try{
+                                String key="AIzaSyCSsy98hhkHQ4tOxuEKrKSJwFvAYOvp96c";
+                                //String qry="Apple";
+
+                                URL url = new URL(
+                                        "https://www.googleapis.com/customsearch/v1?key=" + key + "&cx=013036536707430787589:_pqjad5hr1a&q=" + qry + "&alt=json");
+                                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                                conn.setRequestMethod("GET");
+                                conn.setRequestProperty("Accept", "application/json");
+                                BufferedReader br = new BufferedReader(new InputStreamReader(
+                                        (conn.getInputStream())));
+
+                                String output,ans="";
+                               // System.out.println("Output from Server .... \n");
+                                int c=0;
+                                while ((output = br.readLine()) != null)
+                                {
+                                    ans+=output;
+                                    if (output.contains("\"snippet\": \"")) {
+                                        String link = output.substring(output.indexOf("\"snippet\": \"") + ("\"snippet\": \"").length(), output.indexOf("\","));
+                                        System.out.println(link);
+                                        speakAndWait("result  "+c++);
+                                        speakAndWait(link);
+
+                                        //speakAndWait(link);
+                                        //Will print the google search links
+                                    }
+                                }
+                                showToast(ans);
+                                Log.d(TAG,ans);
+                                conn.disconnect();
+                            }
+                            catch(Exception e)
+                            {
+                                speakAndWait(e.toString());
+                            }
+
+                        }
+                    }).start();
+                }
                 else
                 {
 
                     tts.speak("I don't know what you mean by "+mpspeech,TextToSpeech.QUEUE_ADD,null,null);
+                    speakAndWait("Sorry Sir seems there is a problem in my circuit...Could you please repeat that?");
+                    handler.postDelayed(new Runnable(){
+
+                        @Override
+                        public void run() {
+
+                            speechRecognizer.startListening(new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH));
+                        }
+                    },1000);
+
                 }
 
 
@@ -220,7 +343,7 @@ public class Service1 extends Service implements TextToSpeech.OnInitListener
                         int curh = rr.time.getHours();
                         int curm = rr.time.getMinutes();
                         //if(BatteryManager.)
-                        if(m==0 && previoushour+1==h )
+                        /*if(m==0 && previoushour+1==h )
                         {
                             tts.speak("It's "+ h +"o clock",TextToSpeech.QUEUE_ADD,null,null);
 
@@ -235,8 +358,17 @@ public class Service1 extends Service implements TextToSpeech.OnInitListener
                             String name =  et31.getText().toString();
                             speakAndWait(name);
                             it.remove();
+                        }*/
+                        if(m==0) {
+                            tts.speak("It's "+ h +"o clock",TextToSpeech.QUEUE_ADD,null,null);
+
+                            String name =  et31.getText().toString();
+                            speakAndWait(name);
+
+                            speakAndWait("Sir just wanted to remind you keep working hard you are very close to success.");
+
                         }
-                    }
+                        }
                     try
                     {
                         Thread.sleep(5000);
@@ -286,7 +418,35 @@ public class Service1 extends Service implements TextToSpeech.OnInitListener
 
 
     }
+    public class MyBroadCastReciever extends BroadcastReceiver {
 
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction().equals(Intent.ACTION_SCREEN_OFF))
+            {
+                Log.i("Check","Screen went OFF");
+                speakAndWait("Screen went OFF");
+                Toast.makeText(context, "screen OFF",Toast.LENGTH_LONG).show();
+            }
+            else if (intent.getAction().equals(Intent.ACTION_SCREEN_ON))
+            {
+                Log.i("Check","Screen went ON");
+                speakAndWait("Screen went ON");
+                Toast.makeText(context, "screen ON",Toast.LENGTH_LONG).show();
+                speechRecognizer.startListening(new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH));
+
+            }
+        }
+    }
+    void openWhatsappContact(String number)
+    {
+        Uri uri=Uri.parse("smsto:"+number);
+        Intent i=new Intent(Intent.ACTION_SENDTO,uri);
+        i.setPackage("com.whatsapp");
+        i.putExtra("hello","Good evening");
+        i.putExtra("chat",true);
+        startActivity(Intent.createChooser(i,""));
+    }
     class MyMediaPlayer implements MediaPlayer.OnCompletionListener
     {
         @Override
@@ -333,29 +493,67 @@ public class Service1 extends Service implements TextToSpeech.OnInitListener
         handler = new Handler();
         tts = new TextToSpeech(getApplicationContext(), this);
         reminderList = new LinkedList<>();
-        reminderList.add(new ReminderRecord(new Date(2018, 7, 4, 23, 32, 30), "Its past 6 pm 10 min"));
-        reminderList.add(new ReminderRecord(new Date(2018, 7, 4, 23, 33, 0), "Its past 12 pm 10 min"));
-        reminderList.add(new ReminderRecord(new Date(2018, 7, 4, 23, 34, 30), "Its past 10am 10 min"));
+        //reminderList.add(new ReminderRecord(new Date(2018, 7, 4, 23, 32, 30), "Its past 6 pm 10 min"));
+        //reminderList.add(new ReminderRecord(new Date(2018, 7, 4, 23, 33, 0), "Its past 12 pm 10 min"));
+        //reminderList.add(new ReminderRecord(new Date(2018, 7, 4, 23, 34, 30), "Its past 10am 10 min"));
         //reminderList.add(new ReminderRecord(new Date(2018,7,4,6,10,30),"Its past 6 am 10 min"));
         //reminderList.add(new ReminderRecord(new Date(2018,7,4,2,10,30),"Its past 2 am 10 min"));
 
-
-        curX = 0;
-        curY = 100;
-
+        windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+        floatingButtonContainer = new LinearLayout(this);
         floatingButton = new FloatingButton(this);
+        floatingButtonContainer.addView(floatingButton);
+
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.TYPE_PHONE, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.TYPE_PHONE,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                PixelFormat.TRANSLUCENT);
         params.gravity = Gravity.TOP | Gravity.LEFT;
-        floatingButton.setBackgroundColor(Color.RED);
 
+        floatingButton.setBackgroundColor(Color.RED);
+        params.height = 900;
+        params.width = 600;
+        curX = 0;
+        curY = 0;
         params.x = curX;
         params.y = curY;
-        params.height = 60;
-        params.width = 100;
-        windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
-        windowManager.addView(floatingButton, params);
+        windowManager.addView(floatingButtonContainer, params);
+
+
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                        WindowManager.LayoutParams.WRAP_CONTENT,
+                        WindowManager.LayoutParams.WRAP_CONTENT,
+                        WindowManager.LayoutParams.TYPE_PHONE,
+                        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                        PixelFormat.TRANSLUCENT);
+                params.gravity = Gravity.TOP | Gravity.LEFT;
+                floatingButton.setBackgroundColor(Color.RED);
+                params.height = 60;
+                params.width = 100;
+                curX = 0;
+                curY = 100;
+                params.x = curX;
+                params.y = curY;
+                windowManager.updateViewLayout(floatingButtonContainer,params);
+
+            }
+        },2500);
+
+        //try {
+
+        Animation a = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.animationset);
+        a.reset();
+        floatingButton.clearAnimation();
+        floatingButton.startAnimation(a);
+        // Android Oreo 8.0: https://github.com/Cleveroad/MusicBobber/issues/20
+
+        //catch (Exception e)
+          //  Toast.makeText(this, e.toString(), Toast.LENGTH_SHORT).show();
 
         floatingButton.setOnTouchListener(new View.OnTouchListener()
         {
@@ -373,13 +571,16 @@ public class Service1 extends Service implements TextToSpeech.OnInitListener
                // Toast.makeText(getApplicationContext(),"change more thn 100",Toast.LENGTH_SHORT).show();
                 WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                         WindowManager.LayoutParams.WRAP_CONTENT,
-                        WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.TYPE_PHONE, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);
+                        WindowManager.LayoutParams.WRAP_CONTENT,
+                        WindowManager.LayoutParams.TYPE_PHONE,
+                        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                        PixelFormat.TRANSLUCENT);
                 params.gravity = Gravity.TOP | Gravity.LEFT;
                 params.x = curX;
                 params.y = curY;
                 params.height = 60;
                 params.width = 100;
-                windowManager.updateViewLayout(floatingButton,params);
+                windowManager.updateViewLayout(floatingButtonContainer,params);
                 return false;
 
             }
@@ -418,6 +619,11 @@ public class Service1 extends Service implements TextToSpeech.OnInitListener
         tv3=new TextView(getApplicationContext());
         tv4=new TextView(getApplicationContext());
         tv4.setText("The service is stopping");
+        MyBroadCastReciever mScreenStateReceiver=new MyBroadCastReciever();
+        IntentFilter screenStateFilter = new IntentFilter();
+        screenStateFilter.addAction(Intent.ACTION_SCREEN_ON);
+        screenStateFilter.addAction(Intent.ACTION_SCREEN_OFF);
+        registerReceiver(mScreenStateReceiver, screenStateFilter);
 
         //tvrow3 =new TextView(getApplicationContext());
         //tvrow3.setText("Created and Developed by Ashwani");
@@ -475,11 +681,10 @@ public class Service1 extends Service implements TextToSpeech.OnInitListener
                  final TextView txt= new TextView(getApplicationContext());
                  txt.setHeight(200);
                  txt.setTextSize(32);
-                 final String str[]={"Listening","Listening.","Listening..","Listening...","Listening....","Listening.....",""};
-
-                 for( int i=0;i<7;i++)
+                 final String str[]={"Listen","Listeni","Listenin","Listening","Listening.","Listening..","Listening...","Listening...."," "};
+                 for( int i=0;i<9;i++)
                  {
-                     handler.postDelayed(new TextChangerRunnable(txt, str[i]), (i + 1) * 400);
+                     handler.postDelayed(new TextChangerRunnable(txt, str[i]), (i + 1) * 300);
                  }
 
                  row2.addView(txt);
@@ -497,7 +702,8 @@ public class Service1 extends Service implements TextToSpeech.OnInitListener
          oxforddictionary =new Button(getApplicationContext());
          oxforddictionary.setBackgroundResource(R.drawable.oxforddictionaryimage);
         oxforddictionary.setLayoutParams (new WindowManager.LayoutParams(75,75,0,0,50,50,50));
-        oxforddictionary.setOnClickListener(new View.OnClickListener() {
+        oxforddictionary.setOnClickListener(new View.OnClickListener()
+        {
         @Override
         public void onClick(View view) {
         if(l1.getParent() == null)
@@ -623,6 +829,7 @@ public class Service1 extends Service implements TextToSpeech.OnInitListener
             @Override
             public void onClick(View view)
             {
+
                 row2.removeAllViews();
                 b[0].setBackgroundColor(Color.rgb(255,0,0));
                 for(int i=0;i<3;i++)
@@ -633,6 +840,13 @@ public class Service1 extends Service implements TextToSpeech.OnInitListener
                 Calendar c = Calendar.getInstance();
                 String msg = "The time is " + c.get(Calendar.HOUR) + " " + c.get(Calendar.MINUTE) + " " + c.getDisplayName(Calendar.AM_PM, Calendar.SHORT, Locale.getDefault());
                 tts.speak(msg, TextToSpeech.QUEUE_ADD, null, null);
+
+
+
+
+
+
+
                 tv1.setText(msg);
                 row2.addView(l1);
 
@@ -667,6 +881,8 @@ public class Service1 extends Service implements TextToSpeech.OnInitListener
                     row2.removeView(l2);
                     b[1].setBackgroundResource(android.R.drawable.btn_default);
                 }
+                //openWhatsappContact("8986761052");
+
             }
         });
 
@@ -718,6 +934,12 @@ public class Service1 extends Service implements TextToSpeech.OnInitListener
                 b[3].setBackgroundColor(Color.RED);
 
                 row2.addView(l4);
+
+                Intent homeIntent = new Intent(Intent.ACTION_MAIN);
+                homeIntent.addCategory( Intent.CATEGORY_HOME );
+                homeIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                startActivity(homeIntent);
+                tts.shutdown();
                 stopService(new Intent(getApplicationContext(), Service1.class));
             }
         });
@@ -730,7 +952,7 @@ public class Service1 extends Service implements TextToSpeech.OnInitListener
         //  linearLayout = (LinearLayout)getSystemService(WINDOW_SERVICE);
 
 
-        windowManager.updateViewLayout(floatingButton, params);
+        windowManager.updateViewLayout(floatingButtonContainer, params);
         this.notification = new Notification(R.drawable.ic_launcher_background, getText(R.string.app_name), System.currentTimeMillis());
         startForeground(ONGOING_NOTIFICATION, this.notification);
 
@@ -760,7 +982,7 @@ public class Service1 extends Service implements TextToSpeech.OnInitListener
     @Override
     public void onDestroy()
     {
-        windowManager.removeView(floatingButton);
+        windowManager.removeView(floatingButtonContainer);
         windowManager.removeView(linearLayout2);
         speakAndWait("Shutting down.");
         tts.stop();
@@ -798,7 +1020,7 @@ public class Service1 extends Service implements TextToSpeech.OnInitListener
                 params.height = 60;
                 floatingButton.setBackgroundColor(Color.RED);
 
-                windowManager.updateViewLayout(floatingButton, params);
+                windowManager.updateViewLayout(floatingButtonContainer, params);
 
                 params = new WindowManager.LayoutParams(
                         WindowManager.LayoutParams.WRAP_CONTENT,
@@ -816,10 +1038,10 @@ public class Service1 extends Service implements TextToSpeech.OnInitListener
                 //a.reset();
                 windowManager.addView(linearLayout2, params);
                 //linearLayout.clearAnimation();
-                linearLayout.startAnimation(a);
+                //linearLayout.startAnimation(a);
 
 
-                windowManager.removeView(floatingButton);
+                windowManager.removeView(floatingButtonContainer);
                 WindowManager.LayoutParams params2 = new WindowManager.LayoutParams(
                         WindowManager.LayoutParams.WRAP_CONTENT,
                         WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.TYPE_PHONE, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);
@@ -831,7 +1053,7 @@ public class Service1 extends Service implements TextToSpeech.OnInitListener
                 params2.height = 60;
                 params2.width = 100;
                 windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
-                windowManager.addView(floatingButton, params2);
+                windowManager.addView(floatingButtonContainer, params2);
 
 
               //  tts.speak("You clicked on me", TextToSpeech.QUEUE_ADD, null, null);
@@ -849,7 +1071,7 @@ public class Service1 extends Service implements TextToSpeech.OnInitListener
                     params.y = curY;
                     params.width = 100;
                     params.height = 60;
-                    windowManager.updateViewLayout(floatingButton, params);
+                    windowManager.updateViewLayout(floatingButtonContainer, params);
 
 
                     windowManager.removeView(linearLayout2);
